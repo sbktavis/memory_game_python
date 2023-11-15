@@ -1,0 +1,178 @@
+# function to group all other functions together to be able to play the game
+def play_game():
+    '''this function is used to group up all other functions required for the memory game to run'''
+    players = get_players() 
+    if len(players) == 0: # to ensure that there is at least one player to start playing
+        print("Minimum of a single player is needed.")
+        return
+    rows, columns = board_size()
+    unused_cell = if_unused_cell(rows, columns)
+    letters = shuffle_letters(rows, columns)
+    board = produce_board(rows, columns, letters)
+    scores = {player: 0 for player in players} # create a dictionary called scores with the keys as the players for each player in players the list 'players'
+    run_game(players, rows, columns, unused_cell, board, scores)
+    
+# function to get list of players playing
+def get_players():
+    '''this function is used to get the player's name and insert them into a list'''
+    players = []
+    
+    # runs within a while loop to keep prompting for an input until nothing is inputted
+    while True:
+        player = input("Enter your name / press enter to start the game: ").strip() # allows for user to enter their names, where .strip() is used to remove any white spaces before or after
+        if player == "": # stops taking player's name when enter is pressed
+            break
+        players.append(player)
+    return players
+
+# function to get the size of the board
+def board_size():
+    '''this function is used to get the amount of rows and columns to be used for the creation of the board'''
+    
+    # runs within a while loop to keep prompting for the amount of rows and columns if their input has been invalidated
+    while True:
+        rows = int(input("Enter any number of rows between 3 and 9: ")) # int to convert input for row to an integer
+        if rows < 3 or rows > 9:
+            print("Please read the instructions and try again.")
+            continue
+        columns = int(input("Enter any number of columns between 3 and 9: ")) # int to convert input for columns to an integer
+        if columns < 3 or columns > 9:
+            print("Please read the instructions and try again.")
+            continue
+        break
+    return rows, columns
+
+# function to check if there is any unused cells
+def if_unused_cell(rows, columns):
+    '''this function is used to check if there are any unused cells by using True and False values'''
+    unused_cell = False
+    if (rows * columns) % 2 == 1: # if there is a remainder after dividing the product of rows and columns, total cells are odd, turning the unused_cell value to True
+        unused_cell = True
+    return unused_cell
+
+# function to shuffle alphabets
+def shuffle_letters(rows, columns):
+    '''this function is used to randomize and get the randomized alphabets in pairs'''
+    alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    alphabets = list(alphabets) # convert string called 'alphabets' into a list to be shuffled
+    random.shuffle(alphabets)
+    alphabets = "".join(alphabets) # converts 'alphabets' back from a list into a string
+    pairs = int((rows * columns) / 2) # calculates number of pairs of alphabets required for the game board
+    
+    # if number of pairs is more than 26, create a new list that will repeat the process of selecting new pairs again
+    if pairs > 26:
+        letters = []
+        for i in range(pairs // 26 + 1):
+            letters += [letter for letter in alphabets] * 2 # takes list of letters in alphabets and add it into 'letters' list
+        letters = letters[:pairs * 2] # slice letters list to include letters up to the index of pairs * 2 
+        
+    # else, get the first 'pairs' letters by using :num_pairs to slice the alphabets list 
+    else:
+        letters = [letter for letter in alphabets[:pairs]] * 2 
+    random.shuffle(letters) # ensure that all letters are randomized since 2 different lists were used
+    return letters
+
+# function to create a 2d list that will represent the game board
+def produce_board(rows, columns, letters):
+    '''this function creates a board with "?" as each cell, having two for loops. first for loop is to ensure that
+    the second for loop runs through every single cell per column.'''
+    board = []
+    
+    # for loop that will start from 0, ending at the length of the letters with step 'columns'
+    for i in range(0, len(letters), columns):
+        row = []
+        
+        # nested for loop that iterates through letters from starting index to index + columns, for each letter, a dictionary with two keys are added to row list
+        for letter in letters[i:i + columns]:
+            row.append({"letter": letter, "hidden": True})
+        board.append(row)
+    return board
+
+
+# function to keep the game running
+def run_game(players, rows, columns, unused_cell, board, scores):
+    '''this function is to ensure that the game keeps running and will print out the results of the game once there are
+    no remaining "hidden" cells left in the game board''' 
+    current_player = 0 
+    
+    # while loop to keep prompting for inputs until the end of the game
+    while True:
+        print("\n" + players[current_player] + "'s turn") # print current player's name
+        print_board(board, unused_cell) # print the current state of the game board
+        
+        # first choice of cell
+        row1, column1 = get_choice(rows, columns, board, unused_cell) # calls get_choice function to store row1 and column1 as inputs from get_choice
+        board[row1][column1]["hidden"] = False # change hidden value to False to show the letter
+        print_board(board, unused_cell)
+        
+        # second choice of cell
+        row2, column2 = get_choice(rows, columns, board, unused_cell)
+        board[row2][column2]["hidden"] = False
+        print_board(board, unused_cell)
+        
+        # if both letters for both inputs are equal, the score for the current player will increase by 1
+        if board[row1][column1]["letter"] == board[row2][column2]["letter"]:
+            scores[players[current_player]] += 1
+            
+        # else, the current player's index will +1, switching the player's turn, and hides both cells of letters
+        else:
+            current_player = (current_player + 1) % len(players)
+            board[row1][column1]["hidden"] = True
+            board[row2][column2]["hidden"] = True
+            
+        # checks if all cells has been revealed by checking if any cells are still "hidden", if there isnt, print the scores and winner(s) and stop the while loop
+        if all(not cell["hidden"] for row in board for cell in row): 
+            print_board(board, unused_cell)
+            winner = [player for player, score in scores.items() if score == max(scores.values())] # finds the player with the highest score by comparing to the maximum value there is in scores
+            print("Scores:")
+            for i, player in enumerate(players): # prints each player's score line by line
+                print("{}. {}: {}".format(i + 1, player, scores[players[i]]))
+            if len(winner) == 1:
+                print("The winner is " + winner[0])
+            else:
+                print("The winners are " + str(winner))
+            break
+
+# function to get choice of player
+def get_choice(rows, columns, board, unused_cell):
+    '''function that takes four parameters, rows, columns, board and unused_cell. it is used to allow the user to input the
+    repective rows and columns to play the memory game'''
+    # while loop to keep prompting for inputs until user inputs valid answers
+    while True: 
+        
+        # asks the user for which row and column the user wants to open, changing it to an integer
+        row = int(input("Enter row (1-" + str(rows) + "): ")) - 1
+        column = int(input("Enter column (1-" + str(columns) + "): ")) - 1
+        
+        # if conditions for invalid cell, visible cell or unused cell when chosen
+        if row < 0 or row >= rows or column < 0 or column >= columns: # if row or column chosen is negative or more than the specified amount of columns, print invalid and try again
+            print("Invalid cell was selected.")
+            continue
+        if board[row][column]["hidden"] == False: # if cell chosen is not hidden, try again
+            print("Visible cell was selected.")
+            continue
+        if unused_cell and row == rows - 1 and column == columns: # if unused_cell is True and row index equal to rows - 1 (the last value) and its column index is equal to columns (the last value), print invalid and try again
+            print("Unused cell was selected.")
+            continue
+        break 
+    return row, column 
+
+# function to print the board that is used to play
+def print_board(board, unused_cell): 
+    '''function that takes two parameters, board and unused_cell. it is used to print the game board of the memory game.'''
+    print("  " + " ".join(str(i + 1) for i in range(len(board[0])))) # creates header for board's columns
+    for i, row in enumerate(board): # for loop that iterates over every row in an enumerated board
+        row_str = " ".join("?" if cell["hidden"] else cell["letter"] for cell in row) # for each cell in a row, if cell's hidden value is True, represented by '?'. if False, cell is represented by respective letter
+        row_str = " ".join(cell["letter"] for cell in row)
+        # if current row is last row, and if there is a remainder of the division of the product of rows and columns, row string is printed with an '@' at the end 
+        if (i + 1) == len(board) and len(board) % 2 == 1 and len(board[0]) % 2 == 1:
+            print(str(i + 1) + " " + row_str, end=" ") # create header for rows, together with the other "?" or letters
+            if unused_cell:
+                print("@", end="")
+                
+        # else, row string is printed with the row index and its characters
+        else:
+            print(str(i + 1) + " " + row_str)
+
+
+play_game()
